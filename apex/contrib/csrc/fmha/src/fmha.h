@@ -60,7 +60,7 @@ struct Qkv_params {
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-
+// __restrict__: 这是一个限定符，用于告诉编译器，指针 cu_seqlens 所指向的内存区域不会被其他指针所访问或修改。这样的声明可以帮助编译器进行更好的优化。
 struct Fused_multihead_attention_fprop_params : public Qkv_params {
 
     // The dQKV matrices.

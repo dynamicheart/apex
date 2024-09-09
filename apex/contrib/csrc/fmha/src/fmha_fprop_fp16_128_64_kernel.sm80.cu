@@ -39,6 +39,13 @@ void fmha_fprop_fp16_128_64_sm80_kernel(Fused_multihead_attention_fprop_params p
 }
 
 void run_fmha_fp16_128_64_sm80(Launch_params<Fused_multihead_attention_fprop_params> &launch_params, const bool configure) {
+    // M=16, N=128, K=64
+    // WARPS_M=1, WARPS_N=4, WARPS_K=1
+
+    // M_PER_MMA=16, N_PER_MMA=16, K_PER_MMA=16                         // The number of elements computed with a single warp-MMA.
+    // M_PER_MMA_PER_CTA=16, N_PER_MMA_PER_CTA=64, K_PER_MMA_PER_CTA=16 // The number of elements computed with a single CTA-MMA.
+    // MMAS_M=1, MMAS_N=2, MMAS_K=4                                     // The number of MMAs needed to compute the GEMM.
+    // M_PER_WARP=16, N_PER_WARP=32, K_PER_WARP=64                      // The number of elements computed per warp.
 
     auto kernel = launch_params.is_training ? &fmha_fprop_fp16_128_64_sm80_kernel<true> : &fmha_fprop_fp16_128_64_sm80_kernel<false>;
 
@@ -57,11 +64,15 @@ void run_fmha_fp16_128_64_sm80(Launch_params<Fused_multihead_attention_fprop_par
     if(configure) {
 
         using Mma_tile_p = fmha::Hmma_tile<typename Kernel_traits::Cta_tile_p>;
+        // q @ k^T 应该是128x64 @ 64x128
+        // N已经是128了，M是被切分的，单个STEP是6，因此此处表示需要进行多少次STEP才能让
+        // CTA完成单个head的矩阵乘法
         constexpr size_t STEPS = Kernel_traits::Cta_tile_p::N / Kernel_traits::Cta_tile_p::M;
         constexpr size_t MMAS_M = Mma_tile_p::MMAS_M;
         constexpr size_t MMAS_N = Mma_tile_p::MMAS_N;
 
         size_t heads_per_cta = ((heads_total + total_ctas - 1) / total_ctas);
+        // 8的含义未知
         size_t elts_per_head = STEPS * MMAS_M * MMAS_N * 8;
         launch_params.elts_per_thread = heads_per_cta * elts_per_head;
         return;
