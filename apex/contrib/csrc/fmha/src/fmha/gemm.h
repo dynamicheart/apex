@@ -228,28 +228,28 @@ inline __device__ void gemm(Acc (&acc)[M][N], const A (&a)[M], const B (&b)[N]) 
 
 template<
     // The number of rows in the CTA tile.
-    int M_,
+    int M_,       // STEP: 16
     // The number of cols in the CTA tile.
-    int N_,
+    int N_,       // S: 128
     // The number of elements in the the K dimension of the GEMM loop.
-    int K_,
+    int K_,       // D: 64
     // The number of rows of warps.
-    int WARPS_M_,
+    int WARPS_M_,  // 1
     // The number of cols of warps.
-    int WARPS_N_,
+    int WARPS_N_,  // 4
     // The number of warps in the K dimension of the GEMM loop.
-    int WARPS_K_>
+    int WARPS_K_>  // 1
 struct Cta_tile_ {
 
     enum { M = M_, N = N_, K = K_ };
     // The number of warps.
     enum { WARPS_M = WARPS_M_, WARPS_N = WARPS_N_, WARPS_K = WARPS_K_ };
     // The number of warps per CTA.
-    enum { WARPS_PER_CTA = WARPS_M * WARPS_N * WARPS_K };
+    enum { WARPS_PER_CTA = WARPS_M * WARPS_N * WARPS_K };  // 1 * 4 * 1 = 4
     // The number of threads per warp.
     enum { THREADS_PER_WARP = 32 };
     // The number of threads per CTA.
-    enum { THREADS_PER_CTA = WARPS_PER_CTA * THREADS_PER_WARP };
+    enum { THREADS_PER_CTA = WARPS_PER_CTA * THREADS_PER_WARP };  // 4 * 32 = 128
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -260,24 +260,27 @@ struct Hmma_tile {
     enum { M_PER_MMA = 16, N_PER_MMA = 16, K_PER_MMA = 16 };
 
     // The number of elements computed with a single CTA-MMA.
+    // 一个cta每轮MMA计算可以处理多少M, N, K
     enum {
-        M_PER_MMA_PER_CTA = M_PER_MMA * Cta_tile::WARPS_M,
-        N_PER_MMA_PER_CTA = N_PER_MMA * Cta_tile::WARPS_N,
-        K_PER_MMA_PER_CTA = K_PER_MMA * Cta_tile::WARPS_K
+        M_PER_MMA_PER_CTA = M_PER_MMA * Cta_tile::WARPS_M, // 16 * 1 = 16
+        N_PER_MMA_PER_CTA = N_PER_MMA * Cta_tile::WARPS_N, // 16 * 4 = 64
+        K_PER_MMA_PER_CTA = K_PER_MMA * Cta_tile::WARPS_K  // 16 * 1 = 16
     };
 
     // The number of MMAs needed to compute the GEMM.
+    // 一个CTA需要经过多少轮MMA计算才能算完所有的元素
     enum {
-        MMAS_M = Div_up<Cta_tile::M, M_PER_MMA_PER_CTA>::VALUE,
-        MMAS_N = Div_up<Cta_tile::N, N_PER_MMA_PER_CTA>::VALUE,
-        MMAS_K = Div_up<Cta_tile::K, K_PER_MMA_PER_CTA>::VALUE,
+        MMAS_M = Div_up<Cta_tile::M, M_PER_MMA_PER_CTA>::VALUE, // 16 / 16  = 1
+        MMAS_N = Div_up<Cta_tile::N, N_PER_MMA_PER_CTA>::VALUE, // 128 / 64 = 2
+        MMAS_K = Div_up<Cta_tile::K, K_PER_MMA_PER_CTA>::VALUE, // 64 / 16  = 4
     };
 
     // The number of elements computed per warp.
+    // 一个warp一共要处理处理多少行数据
     enum {
-        M_PER_WARP = MMAS_M * M_PER_MMA,
-        N_PER_WARP = MMAS_N * N_PER_MMA,
-        K_PER_WARP = MMAS_K * K_PER_MMA,
+        M_PER_WARP = MMAS_M * M_PER_MMA, // 1 * 16 = 16
+        N_PER_WARP = MMAS_N * N_PER_MMA, // 2 * 16 = 32
+        K_PER_WARP = MMAS_K * K_PER_MMA, // 4 * 16 = 64
     };
 
 };

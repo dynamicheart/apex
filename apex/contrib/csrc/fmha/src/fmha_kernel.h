@@ -39,7 +39,8 @@
 namespace fmha {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-
+// bidb: 当前cuda block id处理第几个batch
+// bidh: 当前cuda block id处理batch里面第几个head
 template<int THREADS_PER_CTA>
 struct BlockInfoPadded {
 

@@ -30,6 +30,10 @@
 namespace fmha {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// using Gmem_tile_q = fmha::Gmem_tile_qkv<Cta_tile_p, fmha::BITS_PER_ELEMENT_A, STEP, D>;
+// BITS_PER_ELEMENT_A=16
+// STEP=16
+// D=64
 
 template<
     // The dimensions of the tile computed by the CTA.
@@ -48,15 +52,15 @@ struct Gmem_tile_qkv {
     // The size of each LDG.
     enum { BYTES_PER_LDG = 16 };
     // The size of a row in bytes.
-    enum { BYTES_PER_ROW = COLS * BITS_PER_ELEMENT / 8 };
+    enum { BYTES_PER_ROW = COLS * BITS_PER_ELEMENT / 8 };     // 64 * 16 / 8 = 128
 
     // The number of threads to load a "row" of the matrix.
-    enum { THREADS_PER_ROW = BYTES_PER_ROW / BYTES_PER_LDG };
+    enum { THREADS_PER_ROW = BYTES_PER_ROW / BYTES_PER_LDG }; // 128 / 16 = 8
 
     // The number of "rows" loaded per LDG.
-    enum { ROWS_PER_LDG = Cta_tile::THREADS_PER_CTA / THREADS_PER_ROW };
+    enum { ROWS_PER_LDG = Cta_tile::THREADS_PER_CTA / THREADS_PER_ROW }; // 128 / 8  = 16
     // The number of LDGs needed to load a chunk of the Q matrix.
-    enum { LDGS = fmha::Div_up<ROWS, ROWS_PER_LDG>::VALUE };
+    enum { LDGS = fmha::Div_up<ROWS, ROWS_PER_LDG>::VALUE };  // 16 / 16 = 1
 
     // Ctor.
     template< typename Params, typename BInfo >
